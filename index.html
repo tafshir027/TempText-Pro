@@ -1,0 +1,1468 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=yes">
+  <title>TempText Pro | Auto-Expiring Text Storage with GitHub Sync</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    :root {
+      --bg-primary: #0a0a0f;
+      --bg-secondary: #0f0f1a;
+      --glass-bg: rgba(30, 20, 50, 0.15);
+      --glass-border: rgba(139, 92, 246, 0.15);
+      --text-primary: #f1f5f9;
+      --text-secondary: #a78bfa;
+      --text-muted: #6b7280;
+      --gradient-primary: linear-gradient(135deg, #7c3aed 0%, #6d28d9 50%, #5b21b6 100%);
+      --gradient-danger: linear-gradient(135deg, #dc2626 0%, #ef4444 100%);
+      --shadow-lg: 0 10px 40px rgba(0, 0, 0, 0.7);
+      --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.8);
+      --radius-md: 12px;
+      --radius-lg: 16px;
+      --radius-xl: 24px;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg-primary);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      color: var(--text-primary);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+      overflow-x: hidden;
+      padding: 0;
+    }
+
+    .bg-orb {
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.25;
+      pointer-events: none;
+      z-index: 0;
+    }
+    .bg-orb.orb-1 {
+      width: 600px; height: 600px;
+      background: #7c3aed;
+      top: -200px; left: -200px;
+      animation: float1 20s infinite ease-in-out;
+    }
+    .bg-orb.orb-2 {
+      width: 500px; height: 500px;
+      background: #6d28d9;
+      bottom: -150px; right: -150px;
+      animation: float2 25s infinite ease-in-out;
+    }
+    .bg-orb.orb-3 {
+      width: 400px; height: 400px;
+      background: #5b21b6;
+      top: 50%; left: 50%;
+      animation: float3 22s infinite ease-in-out;
+    }
+
+    @keyframes float1 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(120px, 100px) scale(1.15); }
+      66% { transform: translate(-60px, 150px) scale(0.85); }
+    }
+    @keyframes float2 {
+      0%, 100% { transform: translate(0, 0) scale(1); }
+      33% { transform: translate(-100px, -80px) scale(1.2); }
+      66% { transform: translate(80px, -120px) scale(0.8); }
+    }
+    @keyframes float3 {
+      0%, 100% { transform: translate(-50%, -50%) scale(1); }
+      50% { transform: translate(-50%, -50%) scale(1.25); }
+    }
+
+    .grid-pattern {
+      position: fixed;
+      inset: 0;
+      background-image: 
+        linear-gradient(rgba(139, 92, 246, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(139, 92, 246, 0.03) 1px, transparent 1px);
+      background-size: 60px 60px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .container {
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 1200px;
+      padding: 2rem 1.5rem 4rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1.5rem;
+    }
+
+    .glass-card {
+      background: var(--glass-bg);
+      backdrop-filter: blur(40px);
+      -webkit-backdrop-filter: blur(40px);
+      border: 1px solid var(--glass-border);
+      border-radius: var(--radius-xl);
+      padding: 2rem;
+      box-shadow: var(--shadow-lg);
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    }
+    .glass-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(139, 92, 246, 0.3), transparent);
+    }
+    .glass-card:hover {
+      border-color: rgba(139, 92, 246, 0.3);
+      box-shadow: var(--shadow-xl), 0 0 30px rgba(139, 92, 246, 0.1);
+      transform: translateY(-2px);
+    }
+
+    h1, h2, h3 {
+      font-family: 'Space Grotesk', 'Inter', sans-serif;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: 1.5rem;
+    }
+    .app-title {
+      font-size: 2.5rem;
+      font-weight: 800;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .app-title i {
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-size: 2rem;
+    }
+    .subtitle {
+      color: var(--text-secondary);
+      font-size: 0.95rem;
+      margin-top: 0.3rem;
+    }
+    .header-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      background: rgba(139, 92, 246, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      padding: 0.3rem 0.8rem;
+      border-radius: 20px;
+      font-size: 0.75rem;
+      color: #a78bfa;
+      margin-left: 0.5rem;
+      font-weight: 500;
+    }
+
+    .sync-row {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+    }
+    .status-badge {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(139, 92, 246, 0.1);
+      padding: 0.6rem 1.2rem;
+      border-radius: 40px;
+      font-size: 0.85rem;
+      color: #a78bfa;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #6b7280;
+    }
+    .status-dot.synced { background: #10b981; box-shadow: 0 0 12px #10b981; }
+    .status-dot.syncing { background: #a78bfa; animation: pulse 1s infinite; }
+    .status-dot.error { background: #ef4444; }
+    .status-dot.local { background: #6b7280; }
+
+    @keyframes pulse { 
+      0%, 100% { opacity: 1; } 
+      50% { opacity: 0.4; } 
+    }
+
+    .btn {
+      background: rgba(139, 92, 246, 0.1);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      color: #e2e8f0;
+      padding: 0.65rem 1.3rem;
+      border-radius: 40px;
+      font-weight: 600;
+      font-size: 0.9rem;
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      cursor: pointer;
+      transition: all 0.25s;
+      white-space: nowrap;
+      font-family: 'Inter', sans-serif;
+    }
+    .btn:hover {
+      background: rgba(139, 92, 246, 0.2);
+      border-color: rgba(139, 92, 246, 0.4);
+      color: #fff;
+    }
+    .btn-primary {
+      background: var(--gradient-primary);
+      border: none;
+      color: white;
+      font-weight: 700;
+      box-shadow: 0 4px 20px rgba(124, 58, 237, 0.4);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 6px 30px rgba(124, 58, 237, 0.6);
+    }
+    .btn-ghost {
+      background: transparent;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+    }
+
+    .input-group {
+      display: flex;
+      flex-direction: column;
+      gap: 0.4rem;
+    }
+    .input-group label {
+      font-size: 0.8rem;
+      color: var(--text-secondary);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    input, textarea {
+      background: rgba(15, 15, 26, 0.8);
+      border: 1.5px solid rgba(139, 92, 246, 0.2);
+      border-radius: var(--radius-md);
+      padding: 0.85rem 1.1rem;
+      color: var(--text-primary);
+      font-size: 0.95rem;
+      outline: none;
+      transition: all 0.3s;
+      width: 100%;
+      font-family: 'Inter', sans-serif;
+    }
+    textarea {
+      min-height: 120px;
+      resize: vertical;
+    }
+    input:focus, textarea:focus {
+      border-color: #7c3aed;
+      box-shadow: 0 0 0 4px rgba(124, 58, 237, 0.2);
+      background: rgba(15, 15, 26, 1);
+    }
+    input::placeholder, textarea::placeholder {
+      color: #6b7280;
+    }
+
+    .timer-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      background: rgba(139, 92, 246, 0.15);
+      border: 1px solid rgba(139, 92, 246, 0.3);
+      padding: 0.5rem 1rem;
+      border-radius: 40px;
+      font-size: 0.85rem;
+      color: #a78bfa;
+      font-weight: 600;
+    }
+
+    .text-cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 1rem;
+      margin-top: 0.5rem;
+    }
+    .text-card {
+      background: rgba(15, 15, 26, 0.6);
+      border: 1px solid rgba(139, 92, 246, 0.15);
+      border-radius: var(--radius-lg);
+      padding: 1.5rem;
+      transition: all 0.3s;
+      cursor: pointer;
+      position: relative;
+    }
+    .text-card:hover {
+      border-color: rgba(139, 92, 246, 0.4);
+      background: rgba(20, 15, 35, 0.8);
+      transform: translateY(-2px);
+    }
+    .text-card.expiring-soon {
+      border-color: rgba(239, 68, 68, 0.5);
+      animation: pulse-warning 2s infinite;
+    }
+    @keyframes pulse-warning {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(239, 68, 68, 0.3); }
+      50% { box-shadow: 0 0 0 8px rgba(239, 68, 68, 0); }
+    }
+    .text-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 0.8rem;
+    }
+    .text-card-title {
+      font-weight: 700;
+      color: #f8fafc;
+      font-size: 1rem;
+    }
+    .text-card-time {
+      font-size: 0.75rem;
+      color: #a78bfa;
+      display: flex;
+      align-items: center;
+      gap: 0.3rem;
+      white-space: nowrap;
+    }
+    .text-card-time.expiring {
+      color: #ef4444;
+      font-weight: 700;
+    }
+    .text-card-content {
+      color: var(--text-secondary);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      max-height: 100px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+    }
+    .text-card-actions {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: flex-end;
+    }
+    .action-btn {
+      width: 34px; height: 34px;
+      border: none;
+      background: rgba(139, 92, 246, 0.1);
+      color: var(--text-secondary);
+      border-radius: 50%;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      font-family: 'Inter', sans-serif;
+    }
+    .action-btn:hover {
+      background: rgba(139, 92, 246, 0.2);
+      color: white;
+      transform: scale(1.15);
+    }
+    .action-btn.copy-btn:hover { color: #10b981; }
+    .action-btn.delete-btn:hover { color: #ef4444; }
+
+    .countdown-bar {
+      height: 3px;
+      background: rgba(139, 92, 246, 0.1);
+      border-radius: 2px;
+      margin-top: 0.5rem;
+      overflow: hidden;
+    }
+    .countdown-bar-fill {
+      height: 100%;
+      background: var(--gradient-primary);
+      transition: width 1s linear;
+      border-radius: 2px;
+    }
+    .countdown-bar-fill.expiring {
+      background: var(--gradient-danger);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 4rem 2rem;
+    }
+    .empty-state-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+      opacity: 0.3;
+      background: var(--gradient-primary);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .empty-state h3 {
+      color: var(--text-secondary);
+      margin-bottom: 0.5rem;
+    }
+    .empty-state p {
+      color: var(--text-muted);
+      font-size: 0.9rem;
+    }
+
+    .modal {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.85);
+      backdrop-filter: blur(12px);
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: 1rem;
+    }
+    .modal.active {
+      display: flex;
+    }
+    .modal-content {
+      background: var(--bg-secondary);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      border-radius: var(--radius-xl);
+      padding: 2.5rem;
+      width: 100%;
+      max-width: 500px;
+      position: relative;
+      box-shadow: var(--shadow-xl);
+      animation: modalSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    @keyframes modalSlideIn {
+      from { opacity: 0; transform: translateY(20px) scale(0.95); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal-close {
+      position: absolute;
+      top: 1.2rem; right: 1.2rem;
+      background: rgba(139, 92, 246, 0.1);
+      border: none;
+      color: var(--text-secondary);
+      font-size: 1.2rem;
+      cursor: pointer;
+      width: 36px; height: 36px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+      font-family: 'Inter', sans-serif;
+    }
+    .modal-close:hover {
+      background: rgba(239, 68, 68, 0.2);
+      color: #ef4444;
+    }
+    .modal h3 {
+      margin-bottom: 1.5rem;
+      font-size: 1.5rem;
+    }
+    .modal .input-row {
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .modal .btn-row {
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+    }
+
+    .toast-container {
+      position: fixed;
+      bottom: 2rem; right: 2rem;
+      z-index: 2000;
+      display: flex;
+      flex-direction: column;
+      gap: 0.8rem;
+    }
+    .toast {
+      background: var(--bg-secondary);
+      border: 1px solid rgba(139, 92, 246, 0.2);
+      padding: 1rem 1.5rem;
+      border-radius: var(--radius-md);
+      box-shadow: var(--shadow-xl);
+      display: flex;
+      align-items: center;
+      gap: 0.8rem;
+      min-width: 280px;
+      animation: toastSlideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      transition: all 0.3s;
+    }
+    .toast.success { border-left: 4px solid #10b981; }
+    .toast.error { border-left: 4px solid #ef4444; }
+    .toast.info { border-left: 4px solid #7c3aed; }
+    .toast.warning { border-left: 4px solid #f59e0b; }
+    @keyframes toastSlideIn {
+      from { opacity: 0; transform: translateX(100px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    .stats-bar {
+      display: flex;
+      gap: 1.5rem;
+      flex-wrap: wrap;
+    }
+    .stat-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+    }
+    .stat-item i { color: #7c3aed; }
+    .stat-value { color: var(--text-primary); font-weight: 700; }
+
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: rgba(15, 15, 26, 0.5); }
+    ::-webkit-scrollbar-thumb { background: rgba(139, 92, 246, 0.3); border-radius: 3px; }
+
+    @media (max-width: 768px) {
+      .container { padding: 1rem; gap: 1rem; }
+      .glass-card { padding: 1.2rem; }
+      .app-title { font-size: 1.8rem; }
+      .text-cards-grid { grid-template-columns: 1fr; }
+      .btn { padding: 0.55rem 1rem; font-size: 0.85rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="bg-orb orb-3"></div>
+  <div class="grid-pattern"></div>
+
+  <div class="container">
+    <!-- Header Card -->
+    <div class="glass-card">
+      <div class="header">
+        <div>
+          <h1 class="app-title">
+            <i class="fa-solid fa-clock"></i> TempText Pro
+            <span class="header-badge"><i class="fa-solid fa-bolt"></i> AUTO-DELETE</span>
+          </h1>
+          <div class="subtitle">
+            <i class="fa-solid fa-trash-can"></i> Auto-expiring text storage • Data vanishes after 3 minutes
+          </div>
+        </div>
+        <div class="sync-row">
+          <div class="status-badge" id="syncStatus">
+            <span class="status-dot" id="syncDot"></span>
+            <span id="syncText">Loading...</span>
+          </div>
+          <button class="btn btn-ghost" id="changeGhBtn">
+            <i class="fa-solid fa-gear"></i> Settings
+          </button>
+        </div>
+      </div>
+      
+      <div style="display: flex; gap: 2rem; flex-wrap: wrap; margin-top: 1.2rem; padding-top: 1.2rem; border-top: 1px solid rgba(139, 92, 246, 0.1);">
+        <div class="timer-badge">
+          <i class="fa-solid fa-hourglass-half"></i>
+          <span>TTL: 3 Minutes</span>
+        </div>
+        <div class="stats-bar">
+          <div class="stat-item">
+            <i class="fa-solid fa-database"></i>
+            <span>Active: <span class="stat-value" id="activeCount">0</span></span>
+          </div>
+          <div class="stat-item">
+            <i class="fa-solid fa-clock"></i>
+            <span>Next cleanup: <span class="stat-value" id="nextCleanup">--</span></span>
+          </div>
+          <div class="stat-item">
+            <i class="fa-solid fa-trash-can"></i>
+            <span>Expired: <span class="stat-value" id="expiredCount">0</span></span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Add Text Card -->
+    <div class="glass-card">
+      <h3 style="margin-bottom: 1.2rem; font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+        <i class="fa-solid fa-plus-circle" style="color: #7c3aed;"></i> Save Temporary Text
+      </h3>
+      <div style="display: flex; flex-direction: column; gap: 1rem;">
+        <div class="input-group">
+          <label><i class="fa-solid fa-tag"></i> Title (optional)</label>
+          <input type="text" id="textTitleInput" placeholder="e.g., Quick Note, API Key, Code Snippet" autocomplete="off">
+        </div>
+        <div class="input-group">
+          <label><i class="fa-solid fa-align-left"></i> Your Text Content</label>
+          <textarea id="textContentInput" placeholder="Type or paste your text here... It will be automatically deleted after 3 minutes." rows="3"></textarea>
+        </div>
+        <div style="display: flex; justify-content: flex-end;">
+          <button class="btn btn-primary" id="saveTextBtn">
+            <i class="fa-solid fa-save"></i> Save Text (Expires in 3 min)
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Active Texts Card -->
+    <div class="glass-card">
+      <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+        <h3 style="font-size: 1.1rem; display: flex; align-items: center; gap: 0.5rem;">
+          <i class="fa-solid fa-list-ul" style="color: #7c3aed;"></i> Active Texts
+        </h3>
+        <button class="btn btn-ghost" id="clearAllBtn" style="font-size: 0.8rem; padding: 0.4rem 1rem;">
+          <i class="fa-solid fa-broom"></i> Clear All
+        </button>
+      </div>
+      <div class="text-cards-grid" id="textCardsContainer">
+        <!-- dynamic content -->
+      </div>
+    </div>
+  </div>
+
+  <!-- Setup Modal -->
+  <div class="modal" id="setupModal">
+    <div class="modal-content">
+      <button class="modal-close" id="closeSetupModalBtn"><i class="fa-solid fa-times"></i></button>
+      <h3><i class="fa-brands fa-github"></i> GitHub Sync Setup</h3>
+      <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">
+        Connect to GitHub to sync your temporary texts across devices.
+      </p>
+      <div class="input-row">
+        <input type="text" id="ghOwner" placeholder="GitHub Username" autocomplete="off">
+        <input type="text" id="ghRepo" placeholder="Repository Name" autocomplete="off">
+        <input type="password" id="ghToken" placeholder="Personal Access Token (repo scope)" autocomplete="off">
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="useLocalOnlyBtn">
+          <i class="fa-solid fa-hard-drive"></i> Use Local Only
+        </button>
+        <button class="btn btn-primary" id="saveGhBtn">
+          <i class="fa-solid fa-plug"></i> Connect & Validate
+        </button>
+      </div>
+      <p style="font-size: 0.7rem; color: var(--text-muted); margin-top: 1rem; text-align: center;">
+        <i class="fa-solid fa-lock"></i> Token requires <strong>repo</strong> scope. Stored locally only.
+      </p>
+    </div>
+  </div>
+
+  <!-- View Modal -->
+  <div class="modal" id="viewModal">
+    <div class="modal-content">
+      <button class="modal-close" id="closeViewModalBtn"><i class="fa-solid fa-times"></i></button>
+      <h3 id="viewModalTitle"><i class="fa-solid fa-eye"></i> View Text</h3>
+      <div style="margin-bottom: 1rem;">
+        <p style="color: var(--text-muted); font-size: 0.8rem; margin-bottom: 0.5rem;">Content:</p>
+        <div style="background: rgba(15, 15, 26, 0.8); padding: 1rem; border-radius: var(--radius-md); max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-word; border: 1px solid rgba(139, 92, 246, 0.2);" id="viewModalContent"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-ghost" id="closeViewBtn">Close</button>
+        <button class="btn btn-primary" id="copyViewBtn">
+          <i class="fa-solid fa-copy"></i> Copy Content
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast-container" id="toastContainer"></div>
+
+  <script>
+    (function() {
+      // ============ STORAGE KEYS ============
+      const STORAGE_KEY = 'tempTextProDataV1';
+      const GH_CONFIG_KEY = 'tempTextProGH';
+      const LOCAL_ONLY_KEY = 'tempTextProLocalOnly';
+      const GH_FILE = 'temptext-pro.json';
+      const EXPIRY_DURATION = 3 * 60 * 1000; // 3 minutes
+      const CLEANUP_INTERVAL = 1000;
+      const RENDER_INTERVAL = 1000;
+      const GITHUB_SYNC_DEBOUNCE = 2000;
+
+      // ============ APP STATE ============
+      let textEntries = [];
+      let GH = { owner: '', repo: '', token: '' };
+      let ghSha = null;
+      let isGitHubReady = false;
+      let cleanupTimer = null;
+      let renderTimer = null;
+      let expiredTotal = 0;
+
+      // ============ DOM ELEMENTS ============
+      const textTitleInput = document.getElementById('textTitleInput');
+      const textContentInput = document.getElementById('textContentInput');
+      const saveTextBtn = document.getElementById('saveTextBtn');
+      const textCardsContainer = document.getElementById('textCardsContainer');
+      const viewModal = document.getElementById('viewModal');
+      const viewModalTitle = document.getElementById('viewModalTitle');
+      const viewModalContent = document.getElementById('viewModalContent');
+      const setupModal = document.getElementById('setupModal');
+      const ghOwnerInput = document.getElementById('ghOwner');
+      const ghRepoInput = document.getElementById('ghRepo');
+      const ghTokenInput = document.getElementById('ghToken');
+      const syncDot = document.getElementById('syncDot');
+      const syncText = document.getElementById('syncText');
+      const toastContainer = document.getElementById('toastContainer');
+      const activeCountEl = document.getElementById('activeCount');
+      const nextCleanupEl = document.getElementById('nextCleanup');
+      const expiredCountEl = document.getElementById('expiredCount');
+
+      // ============ UTILITY FUNCTIONS ============
+      function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+      }
+
+      function showToast(message, type = 'info') {
+        const icons = { 
+          success: 'fa-circle-check', 
+          error: 'fa-circle-exclamation', 
+          info: 'fa-circle-info',
+          warning: 'fa-triangle-exclamation'
+        };
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `<i class="fa-solid ${icons[type] || icons.info}"></i> <span>${message}</span>`;
+        toastContainer.appendChild(toast);
+        
+        setTimeout(() => {
+          toast.style.opacity = '0';
+          toast.style.transform = 'translateX(100px)';
+          setTimeout(() => {
+            if (toast.parentNode) {
+              toast.remove();
+            }
+          }, 300);
+        }, 3000);
+      }
+
+      function setSyncStatus(status, text) {
+        syncDot.className = `status-dot ${status}`;
+        syncText.textContent = text || status;
+      }
+
+      function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+          const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+          };
+          clearTimeout(timeout);
+          timeout = setTimeout(later, wait);
+        };
+      }
+
+      // ============ IMPROVED CLIPBOARD FUNCTION ============
+      async function copyToClipboard(text) {
+        // First try the modern Clipboard API
+        if (navigator.clipboard && window.isSecureContext) {
+          try {
+            await navigator.clipboard.writeText(text);
+            return true;
+          } catch (err) {
+            console.warn('Clipboard API failed, trying fallback:', err);
+          }
+        }
+        
+        // Fallback method using textarea
+        try {
+          const textarea = document.createElement('textarea');
+          textarea.value = text;
+          
+          // Make the textarea invisible but part of the document
+          textarea.style.position = 'fixed';
+          textarea.style.left = '-9999px';
+          textarea.style.top = '-9999px';
+          textarea.style.opacity = '0';
+          textarea.style.width = '1px';
+          textarea.style.height = '1px';
+          
+          document.body.appendChild(textarea);
+          
+          // Select and copy
+          textarea.focus();
+          textarea.select();
+          
+          // For mobile devices
+          textarea.setSelectionRange(0, textarea.value.length);
+          
+          const successful = document.execCommand('copy');
+          document.body.removeChild(textarea);
+          
+          if (successful) {
+            return true;
+          }
+          
+          // If execCommand fails, try one more method
+          const input = document.createElement('input');
+          input.value = text;
+          input.style.position = 'fixed';
+          input.style.left = '-9999px';
+          input.style.top = '-9999px';
+          document.body.appendChild(input);
+          input.select();
+          input.setSelectionRange(0, input.value.length);
+          const success2 = document.execCommand('copy');
+          document.body.removeChild(input);
+          
+          return success2;
+        } catch (err) {
+          console.error('Copy fallback failed:', err);
+          return false;
+        }
+      }
+
+      // ============ LOCAL STORAGE ============
+      function loadLocalData() {
+        const stored = localStorage.getItem(STORAGE_KEY);
+        if (stored) {
+          try {
+            textEntries = JSON.parse(stored);
+            const now = Date.now();
+            const beforeCount = textEntries.length;
+            textEntries = textEntries.filter(entry => {
+              if (!entry.expiresAt || !entry.id || !entry.content) {
+                return false;
+              }
+              return entry.expiresAt > now;
+            });
+            expiredTotal += (beforeCount - textEntries.length);
+          } catch(e) {
+            console.error('Failed to parse local data:', e);
+            textEntries = [];
+            localStorage.removeItem(STORAGE_KEY);
+          }
+        } else {
+          textEntries = [];
+        }
+      }
+
+      function saveLocalData() {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(textEntries));
+        } catch(e) {
+          console.error('Failed to save local data:', e);
+          showToast('Failed to save locally. Storage might be full.', 'error');
+        }
+      }
+
+      // ============ GITHUB API FUNCTIONS ============
+      function ghHead(cfg = GH) {
+        return {
+          'Authorization': `token ${cfg.token}`,
+          'Accept': 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+          'X-GitHub-Api-Version': '2022-11-28'
+        };
+      }
+
+      function toB64(s) {
+        try {
+          const b = new TextEncoder().encode(s);
+          let binary = '';
+          b.forEach(x => binary += String.fromCharCode(x));
+          return btoa(binary);
+        } catch(e) {
+          return btoa(unescape(encodeURIComponent(s)));
+        }
+      }
+
+      function fromB64(b) {
+        try {
+          const cleaned = b.replace(/\s/g, '');
+          const binary = atob(cleaned);
+          const bytes = new Uint8Array(binary.length);
+          for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+          return new TextDecoder().decode(bytes);
+        } catch (e) {
+          try {
+            return decodeURIComponent(escape(atob(b.replace(/\s/g, ''))));
+          } catch (e2) {
+            throw new Error('Failed to decode data from GitHub');
+          }
+        }
+      }
+
+      async function ghLoad() {
+        if (!GH.owner || !GH.repo || !GH.token) {
+          throw new Error('GitHub configuration is incomplete');
+        }
+
+        try {
+          const r = await fetch(
+            `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH_FILE}`,
+            { headers: ghHead() }
+          );
+          
+          if (r.status === 404) {
+            ghSha = null;
+            return null;
+          }
+          
+          if (!r.ok) {
+            const e = await r.json().catch(() => ({}));
+            throw new Error(e.message || `GitHub returned HTTP ${r.status}`);
+          }
+          
+          const d = await r.json();
+          ghSha = d.sha;
+          const decoded = fromB64(d.content);
+          return JSON.parse(decoded);
+        } catch (e) {
+          throw e;
+        }
+      }
+
+      async function ghSave(data) {
+        if (!GH.owner || !GH.repo || !GH.token) {
+          throw new Error('GitHub configuration is incomplete');
+        }
+
+        try {
+          const body = {
+            message: 'TempTextPro update',
+            content: toB64(JSON.stringify(data, null, 2))
+          };
+          if (ghSha) body.sha = ghSha;
+
+          const r = await fetch(
+            `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH_FILE}`,
+            { method: 'PUT', headers: ghHead(), body: JSON.stringify(body) }
+          );
+
+          if (r.status === 409) {
+            await ghLoad();
+            const body2 = {
+              message: 'TempTextPro update (merge)',
+              content: toB64(JSON.stringify(data, null, 2)),
+              sha: ghSha
+            };
+            const r2 = await fetch(
+              `https://api.github.com/repos/${GH.owner}/${GH.repo}/contents/${GH_FILE}`,
+              { method: 'PUT', headers: ghHead(), body: JSON.stringify(body2) }
+            );
+            
+            if (!r2.ok) {
+              const e = await r2.json().catch(() => ({}));
+              throw new Error(e.message || `HTTP ${r2.status}`);
+            }
+            
+            const d2 = await r2.json();
+            ghSha = d2.content.sha;
+            return;
+          }
+
+          if (!r.ok) {
+            const e = await r.json().catch(() => ({}));
+            throw new Error(e.message || `HTTP ${r.status}`);
+          }
+          
+          const d = await r.json();
+          ghSha = d.content.sha;
+        } catch (e) {
+          throw e;
+        }
+      }
+
+      const debouncedGitHubSync = debounce(() => {
+        if (!isGitHubReady || !GH.owner || !GH.token) {
+          return;
+        }
+        
+        ghSave(JSON.parse(JSON.stringify(textEntries)))
+          .then(() => {
+            setSyncStatus('synced', 'Synced');
+          })
+          .catch(e => {
+            setSyncStatus('error', 'Sync failed');
+          });
+      }, GITHUB_SYNC_DEBOUNCE);
+
+      function persistToGitHub() {
+        if (!isGitHubReady || !GH.owner || !GH.token) {
+          return Promise.resolve();
+        }
+        return debouncedGitHubSync();
+      }
+
+      // ============ TEXT MANAGEMENT ============
+      function cleanExpiredEntries() {
+        const now = Date.now();
+        const beforeCount = textEntries.length;
+        textEntries = textEntries.filter(entry => entry.expiresAt > now);
+        const removedCount = beforeCount - textEntries.length;
+        
+        if (removedCount > 0) {
+          expiredTotal += removedCount;
+          saveLocalData();
+          persistToGitHub();
+          renderTextCards();
+          updateStats();
+        }
+      }
+
+      function formatTimeRemaining(expiresAt) {
+        const now = Date.now();
+        const remaining = expiresAt - now;
+        
+        if (remaining <= 0) {
+          return { text: 'Expired', isExpiring: true, seconds: 0 };
+        }
+        
+        const totalSeconds = Math.floor(remaining / 1000);
+        const minutes = Math.floor(totalSeconds / 60);
+        const seconds = totalSeconds % 60;
+        const isExpiring = totalSeconds <= 30;
+        
+        if (minutes > 0) {
+          return { 
+            text: `${minutes}m ${seconds}s left`, 
+            isExpiring, 
+            seconds: totalSeconds 
+          };
+        } else {
+          return { 
+            text: `${seconds}s left`, 
+            isExpiring, 
+            seconds: totalSeconds 
+          };
+        }
+      }
+
+      function getProgressPercentage(expiresAt) {
+        const now = Date.now();
+        const remaining = Math.max(0, expiresAt - now);
+        return Math.max(0, Math.min(100, (remaining / EXPIRY_DURATION) * 100));
+      }
+
+      // ============ RENDER FUNCTIONS ============
+      function updateTimersOnly() {
+        document.querySelectorAll('.text-card').forEach(card => {
+          const id = card.getAttribute('data-id');
+          const entry = textEntries.find(e => e.id == id);
+          
+          if (entry) {
+            const timeInfo = formatTimeRemaining(entry.expiresAt);
+            const progress = getProgressPercentage(entry.expiresAt);
+            
+            const timeEl = card.querySelector('.text-card-time');
+            if (timeEl) {
+              timeEl.className = `text-card-time ${timeInfo.isExpiring ? 'expiring' : ''}`;
+              timeEl.innerHTML = `<i class="fa-solid fa-hourglass-${timeInfo.isExpiring ? 'end' : 'half'}"></i> ${timeInfo.text}`;
+            }
+            
+            const progressFill = card.querySelector('.countdown-bar-fill');
+            if (progressFill) {
+              progressFill.style.width = `${progress}%`;
+              progressFill.className = `countdown-bar-fill ${timeInfo.isExpiring ? 'expiring' : ''}`;
+            }
+            
+            if (timeInfo.isExpiring) {
+              card.classList.add('expiring-soon');
+            } else {
+              card.classList.remove('expiring-soon');
+            }
+          }
+        });
+        
+        updateStats();
+      }
+
+      function renderTextCards() {
+        textCardsContainer.innerHTML = '';
+        
+        if (textEntries.length === 0) {
+          textCardsContainer.innerHTML = `
+            <div class="empty-state" style="grid-column: 1/-1;">
+              <div class="empty-state-icon"><i class="fa-solid fa-inbox"></i></div>
+              <h3>No Active Texts</h3>
+              <p>Save some text above and it will appear here.<br>Remember: all texts auto-delete after 3 minutes!</p>
+            </div>`;
+          updateStats();
+          return;
+        }
+        
+        const sorted = [...textEntries].sort((a, b) => a.expiresAt - b.expiresAt);
+        
+        sorted.forEach(entry => {
+          const timeInfo = formatTimeRemaining(entry.expiresAt);
+          const progress = getProgressPercentage(entry.expiresAt);
+          const title = entry.title || 'Untitled Text';
+          const preview = entry.content.length > 100 
+            ? entry.content.substring(0, 100) + '...' 
+            : entry.content;
+          
+          const card = document.createElement('div');
+          card.className = `text-card ${timeInfo.isExpiring ? 'expiring-soon' : ''}`;
+          card.setAttribute('data-id', entry.id);
+          
+          card.innerHTML = `
+            <div class="text-card-header">
+              <div class="text-card-title">
+                <i class="fa-solid fa-file-lines" style="color: #7c3aed; margin-right: 0.3rem;"></i>
+                ${escapeHtml(title)}
+              </div>
+              <div class="text-card-time ${timeInfo.isExpiring ? 'expiring' : ''}">
+                <i class="fa-solid fa-hourglass-${timeInfo.isExpiring ? 'end' : 'half'}"></i>
+                ${timeInfo.text}
+              </div>
+            </div>
+            <div class="text-card-content">${escapeHtml(preview)}</div>
+            <div class="countdown-bar">
+              <div class="countdown-bar-fill ${timeInfo.isExpiring ? 'expiring' : ''}" 
+                   style="width: ${progress}%;"></div>
+            </div>
+            <div class="text-card-actions" style="margin-top: 0.8rem;">
+              <button class="action-btn view-btn" data-action="view" data-id="${entry.id}" title="View Full Text">
+                <i class="fa-solid fa-eye"></i>
+              </button>
+              <button class="action-btn copy-btn" data-action="copy" data-id="${entry.id}" title="Copy Content">
+                <i class="fa-solid fa-copy"></i>
+              </button>
+              <button class="action-btn delete-btn" data-action="delete" data-id="${entry.id}" title="Delete Now">
+                <i class="fa-solid fa-trash"></i>
+              </button>
+            </div>
+          `;
+          
+          textCardsContainer.appendChild(card);
+        });
+        
+        updateStats();
+      }
+
+      // ============ EVENT HANDLERS ============
+      textCardsContainer.addEventListener('click', async function(e) {
+        // Find the clicked button
+        const button = e.target.closest('button');
+        if (!button) {
+          // If clicking on card but not on a button, show view modal
+          const card = e.target.closest('.text-card');
+          if (card) {
+            const id = card.getAttribute('data-id');
+            const entry = textEntries.find(en => en.id == id);
+            if (entry) {
+              viewModalTitle.textContent = entry.title || 'Untitled Text';
+              viewModalContent.textContent = entry.content;
+              viewModal.classList.add('active');
+            }
+          }
+          return;
+        }
+
+        e.stopPropagation();
+        e.preventDefault();
+
+        const action = button.getAttribute('data-action');
+        const id = button.getAttribute('data-id');
+        const entry = textEntries.find(en => en.id == id);
+        
+        if (!entry) return;
+
+        switch(action) {
+          case 'view':
+            viewModalTitle.textContent = entry.title || 'Untitled Text';
+            viewModalContent.textContent = entry.content;
+            viewModal.classList.add('active');
+            break;
+
+          case 'copy':
+            const copied = await copyToClipboard(entry.content);
+            if (copied) {
+              showToast('Content copied to clipboard! ✓', 'success');
+              // Visual feedback on button
+              const icon = button.querySelector('i');
+              if (icon) {
+                const originalClass = icon.className;
+                icon.className = 'fa-solid fa-check';
+                setTimeout(() => {
+                  icon.className = originalClass;
+                }, 1500);
+              }
+            } else {
+              showToast('Failed to copy. Please try again.', 'error');
+            }
+            break;
+
+          case 'delete':
+            if (confirm('Are you sure you want to delete this text?')) {
+              textEntries = textEntries.filter(en => en.id != id);
+              saveLocalData();
+              persistToGitHub();
+              renderTextCards();
+              showToast('Text deleted successfully', 'info');
+            }
+            break;
+        }
+      });
+
+      function updateStats() {
+        activeCountEl.textContent = textEntries.length;
+        expiredCountEl.textContent = expiredTotal;
+        
+        if (textEntries.length > 0) {
+          const soonest = textEntries.reduce((min, entry) => 
+            entry.expiresAt < min.expiresAt ? entry : min
+          );
+          nextCleanupEl.textContent = formatTimeRemaining(soonest.expiresAt).text;
+        } else {
+          nextCleanupEl.textContent = '--';
+        }
+      }
+
+      // ============ ACTIONS ============
+      function saveNewText() {
+        const title = textTitleInput.value.trim();
+        const content = textContentInput.value.trim();
+        
+        if (!content) {
+          showToast('Please enter some text content', 'error');
+          textContentInput.focus();
+          return;
+        }
+
+        const entry = {
+          id: Date.now().toString() + Math.random().toString(36).substr(2, 9),
+          title: title || 'Untitled',
+          content: content,
+          createdAt: Date.now(),
+          expiresAt: Date.now() + EXPIRY_DURATION
+        };
+
+        textEntries.push(entry);
+        saveLocalData();
+        persistToGitHub();
+        renderTextCards();
+        
+        textTitleInput.value = '';
+        textContentInput.value = '';
+        
+        showToast('Text saved! Auto-deletes in 3 minutes ⏳', 'success');
+        textTitleInput.focus();
+      }
+
+      function clearAllEntries() {
+        if (textEntries.length === 0) {
+          showToast('No texts to clear', 'info');
+          return;
+        }
+        
+        if (confirm(`Delete all ${textEntries.length} text entries? This cannot be undone.`)) {
+          textEntries = [];
+          saveLocalData();
+          persistToGitHub();
+          renderTextCards();
+          showToast('All texts cleared!', 'info');
+        }
+      }
+
+      // ============ GITHUB CONFIG ============
+      function loadGitHubConfig() {
+        const saved = localStorage.getItem(GH_CONFIG_KEY);
+        if (saved) {
+          try { 
+            GH = JSON.parse(saved);
+          } catch(e) { 
+            GH = { owner: '', repo: '', token: '' }; 
+          }
+        }
+        
+        const localOnly = localStorage.getItem(LOCAL_ONLY_KEY) === 'true';
+        
+        if (localOnly) {
+          isGitHubReady = false;
+          setSyncStatus('local', 'Local Only');
+        } else if (GH.owner && GH.token) {
+          isGitHubReady = true;
+          setSyncStatus('syncing', 'Connecting...');
+          
+          ghLoad().then(remoteData => {
+            if (remoteData && Array.isArray(remoteData)) {
+              const now = Date.now();
+              textEntries = remoteData.filter(entry => entry.expiresAt > now);
+              saveLocalData();
+              renderTextCards();
+            }
+            setSyncStatus('synced', 'Connected');
+          }).catch(() => {
+            setSyncStatus('error', 'Offline');
+          });
+        } else {
+          isGitHubReady = false;
+          setSyncStatus('local', 'Not configured');
+        }
+      }
+
+      function saveGitHubConfig(owner, repo, token) {
+        if (!owner || !repo || !token) {
+          showToast('Please fill all fields', 'error');
+          return;
+        }
+        
+        GH = { owner, repo, token };
+        localStorage.setItem(GH_CONFIG_KEY, JSON.stringify(GH));
+        localStorage.setItem(LOCAL_ONLY_KEY, 'false');
+        isGitHubReady = true;
+        ghSha = null;
+        setSyncStatus('syncing', 'Validating...');
+        
+        ghLoad().then(remote => {
+          if (remote && Array.isArray(remote)) {
+            const now = Date.now();
+            textEntries = remote.filter(entry => entry.expiresAt > now);
+            saveLocalData();
+          }
+          setSyncStatus('synced', 'Connected');
+          renderTextCards();
+          setupModal.classList.remove('active');
+          showToast('GitHub connected successfully! 🚀', 'success');
+        }).catch(err => {
+          setSyncStatus('error', 'Auth failed');
+          showToast('Connection failed: ' + err.message, 'error');
+          isGitHubReady = false;
+        });
+      }
+
+      function useLocalOnly() {
+        localStorage.setItem(LOCAL_ONLY_KEY, 'true');
+        GH = { owner: '', repo: '', token: '' };
+        localStorage.removeItem(GH_CONFIG_KEY);
+        isGitHubReady = false;
+        ghSha = null;
+        setSyncStatus('local', 'Local Only');
+        setupModal.classList.remove('active');
+        showToast('Switched to Local Only mode', 'info');
+      }
+
+      // ============ TIMER MANAGEMENT ============
+      function startTimers() {
+        if (cleanupTimer) clearInterval(cleanupTimer);
+        cleanupTimer = setInterval(() => {
+          cleanExpiredEntries();
+        }, CLEANUP_INTERVAL);
+        
+        if (renderTimer) clearInterval(renderTimer);
+        renderTimer = setInterval(() => {
+          if (textEntries.length > 0) {
+            updateTimersOnly();
+          }
+        }, RENDER_INTERVAL);
+      }
+
+      // ============ EVENT LISTENERS ============
+      saveTextBtn.addEventListener('click', saveNewText);
+      
+      textContentInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+          e.preventDefault();
+          saveNewText();
+        }
+      });
+
+      document.getElementById('clearAllBtn').addEventListener('click', clearAllEntries);
+      
+      document.getElementById('changeGhBtn').addEventListener('click', () => {
+        setupModal.classList.add('active');
+        if (GH.owner) ghOwnerInput.value = GH.owner;
+        if (GH.repo) ghRepoInput.value = GH.repo;
+        if (GH.token) ghTokenInput.value = GH.token;
+      });
+
+      document.getElementById('closeSetupModalBtn').addEventListener('click', () => {
+        setupModal.classList.remove('active');
+      });
+
+      setupModal.addEventListener('click', (e) => {
+        if (e.target === setupModal) {
+          setupModal.classList.remove('active');
+        }
+      });
+
+      document.getElementById('saveGhBtn').addEventListener('click', () => {
+        const owner = ghOwnerInput.value.trim();
+        const repo = ghRepoInput.value.trim();
+        const token = ghTokenInput.value.trim();
+        saveGitHubConfig(owner, repo, token);
+      });
+
+      document.getElementById('useLocalOnlyBtn').addEventListener('click', useLocalOnly);
+
+      // View Modal events
+      document.getElementById('closeViewModalBtn').addEventListener('click', () => {
+        viewModal.classList.remove('active');
+      });
+      
+      document.getElementById('closeViewBtn').addEventListener('click', () => {
+        viewModal.classList.remove('active');
+      });
+      
+      viewModal.addEventListener('click', (e) => {
+        if (e.target === viewModal) {
+          viewModal.classList.remove('active');
+        }
+      });
+      
+      document.getElementById('copyViewBtn').addEventListener('click', async () => {
+        const content = viewModalContent.textContent;
+        const copied = await copyToClipboard(content);
+        if (copied) {
+          showToast('Content copied to clipboard! ✓', 'success');
+          viewModal.classList.remove('active');
+        } else {
+          showToast('Failed to copy. Please try again.', 'error');
+        }
+      });
+
+      // Keyboard shortcuts
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          if (setupModal.classList.contains('active')) {
+            setupModal.classList.remove('active');
+          }
+          if (viewModal.classList.contains('active')) {
+            viewModal.classList.remove('active');
+          }
+        }
+      });
+
+      // ============ INITIALIZATION ============
+      function init() {
+        loadLocalData();
+        cleanExpiredEntries();
+        loadGitHubConfig();
+        renderTextCards();
+        startTimers();
+        
+        setTimeout(() => {
+          if (textEntries.length === 0) {
+            showToast('Welcome! All texts auto-delete after 3 minutes ⚡', 'info');
+          }
+        }, 500);
+      }
+
+      init();
+    })();
+  </script>
+</body>
+</html>
